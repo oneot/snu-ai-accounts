@@ -1,0 +1,41 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>서울대 AI융합교육 실습 계정 확인</title>
+<style>
+body{font-family:-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;background:#f6f8fa;margin:0;display:flex;justify-content:center;padding:40px 16px;color:#1f2328}
+.card{background:#fff;border:1px solid #d0d7de;border-radius:12px;padding:28px;max-width:420px;width:100%;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+h1{font-size:22px;margin:0 0 6px}p.sub{color:#59636e;margin:0 0 20px;font-size:14px}
+input{width:100%;box-sizing:border-box;font-size:18px;padding:12px;border:1px solid #d0d7de;border-radius:8px}
+button{width:100%;margin-top:10px;font-size:17px;padding:12px;border:0;border-radius:8px;background:#1f883d;color:#fff;font-weight:600}
+.res{margin-top:20px;display:none}.row{background:#f6f8fa;border-radius:8px;padding:12px;margin-bottom:10px}
+.lbl{font-size:12px;color:#59636e}.val{font-size:17px;font-weight:600;word-break:break-all;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.val button{width:auto;margin:0;padding:6px 10px;font-size:13px;background:#6e7781}
+.err{color:#cf222e;margin-top:14px;display:none}.note{font-size:13px;color:#59636e;margin-top:12px;line-height:1.5}
+a{color:#0969da}
+</style></head><body><div class="card">
+<h1>서울대 AI융합교육 실습 계정 확인</h1><p class="sub">본인 이름(한글)을 입력하세요.</p>
+<form id="f"><input id="n" placeholder="예: 홍길동" autocomplete="off"><button id="b">계정 보기</button></form>
+<div class="err" id="err">일치하는 이름이 없습니다. 띄어쓰기 없이 한글 이름을 정확히 입력하세요.</div>
+<div class="res" id="res">
+<div class="row"><div class="lbl">이름</div><div class="val" id="nm"></div></div>
+<div class="row"><div class="lbl">아이디</div><div class="val"><span id="id"></span><button type="button" data-c="id">복사</button></div></div>
+<div class="row"><div class="lbl">초기 비밀번호</div><div class="val"><span id="pw"></span><button type="button" data-c="pw">복사</button></div></div>
+<div class="note">첫 로그인 시 비밀번호 변경 화면이 나오면 새 비밀번호를 정해 주세요. 변경한 비밀번호는 꼭 기억하세요.<br>
+접속: <a href="https://copilotstudio.microsoft.com" target="_blank" rel="noopener">copilotstudio.microsoft.com</a></div>
+</div></div>
+<script>
+const b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const DP=fetch('data.json').then(r=>r.json());
+document.getElementById('f').onsubmit=async e=>{e.preventDefault();
+ const btn=document.getElementById('b');btn.disabled=true;btn.textContent='확인 중...';
+ document.getElementById('err').style.display='none';document.getElementById('res').style.display='none';
+ try{const D=await DP;const n=document.getElementById('n').value.normalize('NFC').replace(/\s/g,'');
+ const k=await crypto.subtle.importKey('raw',new TextEncoder().encode(n),'PBKDF2',false,['deriveBits']);
+ const bits=new Uint8Array(await crypto.subtle.deriveBits({name:'PBKDF2',salt:b64(D.salt),iterations:D.it,hash:'SHA-256'},k,512));
+ const id=[...bits.slice(0,32)].map(x=>x.toString(16).padStart(2,'0')).join('');const en=D.e[id];
+ if(!en){document.getElementById('err').style.display='block';return}
+ const ak=await crypto.subtle.importKey('raw',bits.slice(32),'AES-GCM',false,['decrypt']);
+ const v=JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:b64(en[0])},ak,b64(en[1]))));
+ nm.textContent=v.name;document.getElementById('id').textContent=v.id;pw.textContent=v.pw;document.getElementById('res').style.display='block';
+ }finally{btn.disabled=false;btn.textContent='계정 보기'}};
+document.querySelectorAll('[data-c]').forEach(x=>x.onclick=()=>{navigator.clipboard.writeText(document.getElementById(x.dataset.c).textContent);x.textContent='복사됨';setTimeout(()=>x.textContent='복사',1200)});
+</script></body></html>
